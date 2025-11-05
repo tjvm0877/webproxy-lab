@@ -1,7 +1,43 @@
 <html>
-<head><title>test</title></head>
-<body> 
-<img align="middle" src="godzilla.gif">
-Dave O'Hallaron
-</body>
+  <head>
+    <title>Tiny Server</title>
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+      body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-height: 100vh;
+      }
+      img {
+        max-width: 150px;
+        height: auto;
+        display: block;
+        margin: 0 auto;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Hello, Tiny Server!</h1>
+    <img src="nyan-cat.gif" alt="nyan cat" />
+    <div>
+      <input id="a" placeholder="enter A value" />
+      <p>+</p>
+      <input id="b" placeholder="enter B value" />
+      <button id="go">Add!</button>
+    </div>
+  </body>
+
+  <script>
+    const $ = (s) => document.querySelector(s);
+    $("#go").addEventListener("click", () => {
+      const a = encodeURIComponent($('#a').value);
+      const b = encodeURIComponent($('#b').value);
+      location.href = `/cgi-bin/adder?${a}&${b}`;
+    });
+  </script>
 </html>
