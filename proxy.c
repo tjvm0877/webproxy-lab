@@ -1,9 +1,12 @@
 #include <stdio.h>
 #include "csapp.h"
-
+#include "sbuf.h"
 /* Recommended max cache and object sizes */
 #define MAX_CACHE_SIZE 1049000
 #define MAX_OBJECT_SIZE 102400
+
+#define NTHREADS 4
+#define SBUFSIZE 16
 
 /* You won't lose style points for including this long line in your code */
 static const char *user_agent_hdr =
@@ -17,9 +20,18 @@ static void build_request(char *dst, size_t dstsz,
                           rio_t *client_rio);
 static void client_error(int fd, const char *cause, const char *errnum,
                          const char *shortmsg, const char *longmsg);
+void *thread(void *vargp);
+
+sbuf_t sbuf;        /* Shared buffer of connected descriptors */
+static sem_t mutex; /* the mutex that protects it */
 
 int main(int argc, char **argv)
 {
+    int listenfd, connfd;
+    socklen_t clientlen;
+    struct sockaddr_storage clientaddr;
+    pthread_t tid;
+
     if (argc != 2)
     {
         fprintf(stderr, "usage: %s <port>\n", argv[0]);
@@ -27,23 +39,32 @@ int main(int argc, char **argv)
     }
 
     printf("%s\n", user_agent_hdr);
+    listenfd = Open_listenfd(argv[1]);
+    Sem_init(&mutex, 0, 1);
+    sbuf_init(&sbuf, SBUFSIZE);
 
-    int listenfd = Open_listenfd(argv[1]);
+    /* Create worker threads */
+    for (int i = 0; i < NTHREADS; ++i)
+        Pthread_create(&tid, NULL, thread, NULL);
 
     while (1)
     {
-        struct sockaddr_storage clientaddr;
-        socklen_t clientlen = sizeof(clientaddr);
-        int connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen);
+        clientlen = sizeof(struct sockaddr_storage);
+        connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen);
+        sbuf_insert(&sbuf, connfd); /* Insert connfd in buffer */
+    }
+    return 0;
+}
 
-        char hostname[MAXLINE], port[MAXLINE];
-        Getnameinfo((SA *)&clientaddr, clientlen, hostname, MAXLINE,
-                    port, MAXLINE, 0);
-        printf("Accepted connection from (%s, %s)\n", hostname, port);
+void *thread(void *vargp)
+{
+    Pthread_detach(pthread_self());
+    while (1)
+    {
+        int connfd = sbuf_remove(&sbuf); /* Remove connfd from buffer */
         handle_client(connfd);
         Close(connfd);
     }
-    return 0;
 }
 
 /* Handle a single HTTP transaction sequentially */
