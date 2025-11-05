@@ -3,7 +3,7 @@
 void doit(int fd);
 void read_requesthdrs(rio_t *rp);
 int parse_uri(char *uri, char *filename, char *cgiargs);
-void serve_static(int fd, char *filename, int filesize);
+void serve_static(int fd, char *filename, int filesize, int is_get);
 void get_filetype(char *filename, char *filetype);
 void serve_dynamic(int fd, char *filename, char *cgiargs);
 void clienterror(int fd, char *cause, char *errnum,
@@ -51,7 +51,7 @@ void doit(int fd)
         return;
     printf("%s", buf);
     sscanf(buf, "%s %s %s", method, uri, version);
-    if (strcasecmp(method, "GET"))
+    if (strcasecmp(method, "GET") && strcasecmp(method, "HEAD"))
     {
         clienterror(fd, method, "501", "Not Implemented",
                     "Tiny does not implement this method");
@@ -76,7 +76,7 @@ void doit(int fd)
                         "Tiny couldn't read the file");
             return;
         }
-        serve_static(fd, filename, sbuf.st_size);
+        serve_static(fd, filename, sbuf.st_size, !strcasecmp(method, "GET"));
     }
     else
     { /* Serve dynamic content */
@@ -139,7 +139,7 @@ int parse_uri(char *uri, char *filename, char *cgiargs)
 }
 
 /* serve_static - copy a file back to the client */
-void serve_static(int fd, char *filename, int filesize)
+void serve_static(int fd, char *filename, int filesize, int is_get)
 {
     int srcfd;
     char *srcp, filetype[MAXLINE], buf[MAXBUF];
@@ -156,6 +156,9 @@ void serve_static(int fd, char *filename, int filesize)
     Rio_writen(fd, buf, strlen(buf));
 
     /* Send response body to client */
+    if (!is_get)
+        return;
+
     srcfd = Open(filename, O_RDONLY, 0);
     srcp = Malloc(filesize);
     rio_readn(srcfd, srcp, filesize);
