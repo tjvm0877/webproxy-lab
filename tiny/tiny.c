@@ -98,7 +98,7 @@ void read_requesthdrs(rio_t *rp)
     Rio_readlineb(rp, buf, MAXLINE);
     printf("%s", buf);
     while (strcmp(buf, "\r\n"))
-    { // line:netp:readhdrs:checkterm
+    {
         Rio_readlineb(rp, buf, MAXLINE);
         printf("%s", buf);
     }
@@ -137,7 +137,6 @@ int parse_uri(char *uri, char *filename, char *cgiargs)
         return 0;
     }
 }
-/* $end parse_uri */
 
 /* serve_static - copy a file back to the client */
 void serve_static(int fd, char *filename, int filesize)
@@ -175,6 +174,8 @@ void get_filetype(char *filename, char *filetype)
         strcpy(filetype, "image/png");
     else if (strstr(filename, ".jpg"))
         strcpy(filetype, "image/jpeg");
+    else if (strstr(filename, ".mpg"))
+        strcpy(filetype, "video/mpeg");
     else
         strcpy(filetype, "text/plain");
 }
